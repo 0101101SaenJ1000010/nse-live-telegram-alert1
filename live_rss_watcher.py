@@ -3,23 +3,17 @@ import xml.etree.ElementTree as ET
 import time
 from datetime import datetime
 
-# RSS Feed URL
 FEED_URL = "https://nsearchives.nseindia.com/content/RSS/Financial_Results.xml"
-FEED_NAME = "fin"
+FEED_NAME = "Announcement"
+seen_links = set()
 
-# Telegram Bot Config
 BOT_TOKEN = '8165623622:AAGIPRrU5rdX4EmNUFT_IDvHDGjuMpWQAI0'
 CHAT_ID = '5501599635'
 
-# Track sent announcements
-seen_links = set()
-
-# HTTP Headers
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
-# Send message to Telegram
 def send_telegram_message(message):
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -28,17 +22,15 @@ def send_telegram_message(message):
     except Exception as e:
         print(f"[Telegram Error] {e}")
 
-# Fetch RSS data
 def fetch_rss_feed():
     try:
         response = requests.get(FEED_URL, headers=headers, timeout=10)
         response.raise_for_status()
         return response.content
     except Exception as e:
-        print(f"[Fetch Error] {e}")
+        print(f"[Error] Fetch failed: {e}")
         return None
 
-# Extract PDF link
 def extract_attachment_link(description):
     if ".pdf" in description:
         start = description.find("https://")
@@ -46,7 +38,6 @@ def extract_attachment_link(description):
         return description[start:end]
     return "N/A"
 
-# Parse and process feed
 def parse_and_display(xml):
     root = ET.fromstring(xml)
     items = root.findall(".//item")
@@ -70,7 +61,8 @@ def parse_and_display(xml):
         print(f"🔗 Update link     : {link}")
         print(f"📎 Attachment link : {attachment}")
         print(f"🧾 NSE Feed        : {FEED_NAME}")
-        print(f"📘 Other Info      : _\n")
+        print(f"📘 Other Info      : _")
+        print(f"[{FEED_NAME}]\n")
 
         # Send to Telegram
         message = (
@@ -83,14 +75,14 @@ def parse_and_display(xml):
         )
         send_telegram_message(message)
 
-# Main Watcher
 def watch():
-    print("📡 Monitoring NSE Online Announcements...\n")
+    print("📡 Live monitoring NSE RSS feed...\n")
     while True:
         xml = fetch_rss_feed()
         if xml:
             parse_and_display(xml)
-        time.sleep(120)  # every 2 minutes
+        time.sleep(120)
 
 if __name__ == "__main__":
     watch()
+as
