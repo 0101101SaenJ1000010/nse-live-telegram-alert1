@@ -2,6 +2,7 @@ import requests
 import xml.etree.ElementTree as ET
 import time
 from datetime import datetime
+from html import escape
 
 FEED_URL = "https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml"
 FEED_NAME = "Announcement"
@@ -18,7 +19,9 @@ def send_telegram_message(message):
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         data = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
-        requests.post(url, data=data, timeout=5)
+        print(f"[DEBUG] Sending message:\n{message}\n")
+        response = requests.post(url, data=data, timeout=5)
+        print(f"[DEBUG] Telegram response: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"[Telegram Error] {e}")
 
@@ -68,15 +71,20 @@ def parse_and_display(xml):
         message = (
             f"<b>{FEED_NAME} Alert</b>\n"
             f"🕒 <b>Time</b>: {now} IST\n"
-            f"🏢 <b>Stock</b>: {title}\n"
-            f"📝 <b>Description</b>: {description or 'N/A'}\n"
-            f"🔗 <b>Link</b>: {link}\n"
-            f"📎 <b>Attachment</b>: {attachment}"
+            f"🏢 <b>Stock</b>: {escape(title)}\n"
+            f"📝 <b>Description</b>: {escape(description or 'N/A')}\n"
+            f"🔗 <b>Link</b>: {escape(link)}\n"
+            f"📎 <b>Attachment</b>: {escape(attachment)}"
         )
         send_telegram_message(message)
 
 def watch():
     print("📡 Live monitoring NSE RSS feed...\n")
+
+    # 🔁 Optional 1-time test (uncomment to verify)
+    # send_telegram_message("✅ Telegram is working! Test message from script.")
+    # return
+
     while True:
         xml = fetch_rss_feed()
         if xml:
