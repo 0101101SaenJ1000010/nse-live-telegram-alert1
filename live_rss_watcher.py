@@ -4,8 +4,8 @@ import time
 from datetime import datetime
 
 # RSS Feed URL
-FEED_URL = "https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml"
-FEED_NAME = "Announcement"
+FEED_URL = "https://nsearchives.nseindia.com/content/RSS/Financial_Results.xml"
+FEED_NAME = "FinResult"
 
 # Telegram Bot Config
 BOT_TOKEN = '8165623622:AAGIPRrU5rdX4EmNUFT_IDvHDGjuMpWQAI0'
