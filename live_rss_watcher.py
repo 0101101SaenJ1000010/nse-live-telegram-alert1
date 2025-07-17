@@ -1,53 +1,87 @@
 import requests
-import time
 import xml.etree.ElementTree as ET
+import time
+from datetime import datetime
+
+FEED_URL = "https://nsearchives.nseindia.com/content/RSS/Online_announcements.xml"
+FEED_NAME = "Announcement"
+seen_links = set()
 
 BOT_TOKEN = '8165623622:AAGIPRrU5rdX4EmNUFT_IDvHDGjuMpWQAI0'
 CHAT_ID = '5501599635'
 
-# List of NSE RSS URLs
-rss_urls = [
-    "https://nsearchives.nseindia.com/content/equities/eqDividend.xml",
-    "https://nsearchives.nseindia.com/content/RSS/Corporate_action.xml"
-]
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+}
 
-sent_titles = set()
-
-def fetch_rss(url):
+def send_telegram_message(message):
     try:
-        response = requests.get(url, timeout=10)
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        data = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
+        requests.post(url, data=data, timeout=5)
+    except Exception as e:
+        print(f"[Telegram Error] {e}")
+
+def fetch_rss_feed():
+    try:
+        response = requests.get(FEED_URL, headers=headers, timeout=10)
         response.raise_for_status()
         return response.content
     except Exception as e:
-        print(f"Error fetching {url}: {e}")
+        print(f"[Error] Fetch failed: {e}")
         return None
 
-def parse_and_send(xml_data):
-    root = ET.fromstring(xml_data)
-    for item in root.findall(".//item"):
-        title = item.find("title").text.strip() if item.find("title") is not None else "No Title"
-        if title not in sent_titles:
-            message = f"📢 *Announcement Title:* {title}"
-            send_telegram(message)
-            print(f"✅ Sent: {title}")
-            sent_titles.add(title)
+def extract_attachment_link(description):
+    if ".pdf" in description:
+        start = description.find("https://")
+        end = description.find(".pdf") + 4
+        return description[start:end]
+    return "N/A"
 
-def send_telegram(message):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {
-        'chat_id': CHAT_ID,
-        'text': message,
-        'parse_mode': 'Markdown'
-    }
-    try:
-        requests.post(url, data=payload, timeout=5)
-    except Exception as e:
-        print(f"❌ Telegram error: {e}")
+def parse_and_display(xml):
+    root = ET.fromstring(xml)
+    items = root.findall(".//item")
 
-# Loop forever every 5 minutes
-while True:
-    for rss_url in rss_urls:
-        xml_data = fetch_rss(rss_url)
-        if xml_data:
-            parse_and_send(xml_data)
-    time.sleep(300)  # Sleep for 5 minutes
+    for item in items:
+        title = item.findtext("title", default="N/A").strip()
+        link = item.findtext("link", default="N/A").strip()
+        description = item.findtext("description", default="").strip()
+
+        if link in seen_links:
+            continue
+        seen_links.add(link)
+
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        attachment = extract_attachment_link(description)
+
+        print("=" * 70)
+        print(f"🕒 Announcement at : {now} IST")
+        print(f"🏢 Stock name      : {title}")
+        print(f"📝 Description     :\n{description}")
+        print(f"🔗 Update link     : {link}")
+        print(f"📎 Attachment link : {attachment}")
+        print(f"🧾 NSE Feed        : {FEED_NAME}")
+        print(f"📘 Other Info      : _")
+        print(f"[{FEED_NAME}]\n")
+
+        # ✅ Send to Telegram
+        message = (
+            f"<b>{FEED_NAME} Alert</b>\n"
+            f"🕒 <b>Time</b>: {now} IST\n"
+            f"🏢 <b>Stock</b>: {title}\n"
+            f"📝 <b>Description</b>: {description or 'N/A'}\n"
+            f"🔗 <b>Link</b>: {link}\n"
+            f"📎 <b>Attachment</b>: {attachment}"
+        )
+        send_telegram_message(message)
+
+def watch():
+    print("📡 Live monitoring NSE RSS feed...\n")
+    while True:
+        xml = fetch_rss_feed()
+        if xml:
+            parse_and_display(xml)
+        time.sleep(120)
+
+if __name__ == "__main__":
+    watch()
